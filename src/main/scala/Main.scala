@@ -1,27 +1,26 @@
 class Main {
 
 
-  class Box(val minX: Int, val maxX: Int, val minY: Int, val maxY: Int)
+type Point = Vector[Vector[Float]]
+type Data = Vector[String]
 
 
-  class Node(sep: Int, leaf: Boolean, values: List[String], smaller: Node, bigger: Node) {
-    def findNodes(box: Box): List[Node] = {
-      verticalSearch(box)
-    }
+abstract class Tree{
+  def include(tree: Tree): Tree
+}
 
-    def verticalSearch(box: Box): List[Node] = {
-      if(this.leaf) List(this)
-      else if (box.minY <= sep && box.maxY <= sep) smaller.horizontalSearch(box)
-      else if (box.minY <= sep && box.maxY >= sep) smaller.horizontalSearch(box) ::: bigger.horizontalSearch(box)
-      else bigger.horizontalSearch(box)
-    }
+class FilledTree(val point: Point, left: Tree, right: Tree, data: Data){
+  def include = new FilledTree(point, left, right, data)
+}
 
-    def horizontalSearch(box: Box): List[Node] = {
-      if(this.leaf) List(this)
-      else if (box.minX <= sep && box.maxX <= sep) smaller.verticalSearch(box)
-      else if (box.minX <= sep && box.maxX >= sep) smaller.verticalSearch(box) ::: bigger.verticalSearch(box)
-      else bigger.verticalSearch(box)
-    }
 
-  }
+
+class VoidTree extends Tree {
+  def include(tree: Tree) = tree
+}
+
+
+
+
+
 }
