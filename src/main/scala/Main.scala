@@ -10,9 +10,8 @@ object Main  extends App {
 
 
   class Node(val left: Pointer, val right: Pointer, val split: Double, val start: Pointer, val end: Pointer) {
-    val length = 5 * 8  // in bytes
     def serialize: Array[Byte] = {
-      val stream: ByteArrayOutputStream = new ByteArrayOutputStream(length)
+      val stream: ByteArrayOutputStream = new ByteArrayOutputStream(Node.length)
       val oos = new ObjectOutputStream(stream)
       oos.writeLong(left);
       oos.writeLong(right);
@@ -26,6 +25,7 @@ object Main  extends App {
   }
 
   object Node{
+    val length = 5*8
     def deserialize(bytes: Array[Byte]): Node = {
       val ois = new ObjectInputStream(new ByteArrayInputStream(bytes))
       val node = new Node(ois.readLong, ois.readLong, ois.readDouble, ois.readLong, ois.readLong)
@@ -50,7 +50,7 @@ object Main  extends App {
 
 
   val file = new FileOutputStream("C:\\Users\\Jesse.Loor\\Desktop\\k_d_tree\\bin.bin")
-  file.write(bytes)
+  file.write(bytes.take(Node.length))
 
 
 
