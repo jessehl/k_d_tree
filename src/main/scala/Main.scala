@@ -23,10 +23,12 @@ object Main  extends App {
 
 
     override def toString: String = {
+      "Node(" +
       this
         .getClass
         .getDeclaredFields
-        .map(name => name.getName + ": " + name.get(this).toString).mkString("\n")
+        .map(name => name.getName + ": " + name.get(this).toString).mkString(", ") +
+      ")"
     }
 
   }
@@ -67,6 +69,6 @@ object Main  extends App {
   println(inferred.last.left)
 
 
-  println(inferred(2))
+  println(inferred(7))
 
 }
