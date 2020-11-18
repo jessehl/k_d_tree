@@ -4,38 +4,52 @@ import java.nio.ByteBuffer
 
 object Main  extends App {
 
-
-  type Point = Array[Double]
-  type Shape = Array[Point]
+  type Split = Double
   type Pointer = Long
 
-
-  class Node(val left: Pointer, val right: Pointer, val split: Double, val size: Short) {
+  class Node(val left: Pointer, val leftSize: Short, val right: Pointer, val rightSize: Short, val split: Split, val record: String) {
     def serialize: Array[Byte] = {
-      val stream = ByteBuffer.allocate(Node.length)
+      val recordBytes = record.getBytes("UTF-8")
+      val requiredLength = recordBytes.length + Node.baseLength
+      val stream = ByteBuffer.allocate(requiredLength)
       stream.putLong(left)
+      stream.putShort(leftSize)
       stream.putLong(right)
+      stream.putShort(rightSize)
       stream.putDouble(split)
-      stream.putShort(size)
+      stream.put(recordBytes)
       stream.array
     }
 
-    override def toString = List(left, right, split, size).mkString(", ")
+
+    override def toString: String = {
+      this
+        .getClass
+        .getDeclaredFields
+        .map(name => name.getName + ": " + name.get(this).toString).mkString("\n")
+    }
 
   }
 
 
   object Node{
-    val length = 5*8
+    val baseLength = 28.toShort // 2 * 8 (Long) + 1 * 8 (Double) + 2 * 2 (Short)
     def deserialize(bytes: Array[Byte]): Node = {
       val stream = ByteBuffer.wrap(bytes)
-      val node = new Node(stream.getLong, stream.getLong, stream.getDouble, stream.getShort)
-      node
+      new Node(
+        left      = stream.getLong,
+        leftSize  = stream.getShort,
+        right     = stream.getLong,
+        rightSize = stream.getShort,
+        split     = stream.getDouble,
+        record    = new String((Node.baseLength until Node.baseLength + stream.remaining).map(stream.get(_)).toArray, "UTF-8")
+      )
+
     }
   }
 
 
-  val nodes = (0 until 10000).map(v => new Node(v*v, v, v,0))
+  val nodes = (0 until 10).map(v => new Node(v*v,v.toShort,v, v.toShort, (Node.baseLength + 2).toShort, "32"))
   val outFile = new FileOutputStream("C:\\Users\\Jesse.Loor\\Desktop\\k_d_tree\\bin")
   nodes.foreach(node => outFile.write(node.serialize))
   outFile.close()
@@ -43,7 +57,7 @@ object Main  extends App {
 
   val path = Paths.get("C:\\Users\\Jesse.Loor\\Desktop\\k_d_tree\\bin")
   val bytes = Files.readAllBytes(path)
-  val inferred = (1 to 10000).map(v => Node.deserialize(bytes.slice((v-1) * Node.length, v * Node.length)))
+  val inferred = (1 to 10).map(v => Node.deserialize(bytes.slice((v-1) * 30, v * 30)))
 
 
   println(nodes.length)
@@ -53,8 +67,6 @@ object Main  extends App {
   println(inferred.last.left)
 
 
-  println(bytes.length)
-  println(Node.length * nodes.length)
+  println(inferred(2))
 
 }
-
