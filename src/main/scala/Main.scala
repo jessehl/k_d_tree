@@ -1,13 +1,11 @@
 import java.io._
-import java.nio.file.{Paths, Files}
 import java.nio.ByteBuffer
 
 
 object Main  extends App {
 
-
   val filename = "C:\\Users\\Jesse.Loor\\Desktop\\k_d_tree\\bin"
-  val K = 2; // nr of dimensions
+  val K = 2 // number of dimensions
 
   type Coordinate = Double
   type Point = Array[Coordinate]
@@ -15,46 +13,46 @@ object Main  extends App {
   type Record = String
 
 
-  class Node(val left: Pointer, val leftSize: Short, val right: Pointer, val rightSize: Short, val point: Point, record: Record) {
+  class Node(val left: Pointer, val right: Pointer, val point: Point, val record: Record) {
     def serialize: Array[Byte] = {
       val recordBytes = record.getBytes("UTF-8")
-      val requiredLength = recordBytes.length + Node.baseLength + 8 * K
-      val stream = ByteBuffer.allocate(requiredLength)
+      val size = (recordBytes.length + Node.baseSize).toShort
+
+      // but the content of the Node in a byte stream
+      val stream = ByteBuffer.allocate(size)
+      stream.putShort(size)
       stream.putLong(left)
-      stream.putShort(leftSize)
       stream.putLong(right)
-      stream.putShort(rightSize)
       for (p <- point) stream.putDouble(p)
       stream.put(recordBytes)
+
+      // return the bytes
       stream.array
     }
 
 
-    def biggerThan(other: Node, k: Int): Boolean = this.point(k)  > other.point(k)
-    def equals(other: Node, k: Int): Boolean = this.point(k) == other.point(k)
-
-
-    def store(parent: Node, leftOfParent: Boolean): Unit = {
-
-      val outFile = new FileOutputStream(filename, true)
+    def store(childIsLeft: Boolean = true, parentPointer: Pointer = 0, parentNode: Option[Node] = None): Unit = {
       val bytes = this.serialize
-      outFile.write(bytes)
+      val outFile = new FileOutputStream(filename, true)
 
-      if (parent != this) {
-        val length = bytes.length.toShort;
-        val pointer = 1000000 //"beginningOfFileBeforeWriting"
-        // update the parent Node with new Pointers and Sizes
+      // get pointer to this node and store on disk
+      val pointer = outFile.getChannel.size()
+      outFile.write(bytes)
+      outFile.close()
+
+      parentNode.foreach {parent =>
+        // update the parent Node with the new Pointer and Size to this node
         val updatedParent = new Node(
-          left = if (leftOfParent) pointer else parent.left,
-          leftSize = if (leftOfParent) length else parent.leftSize,
-          right = if (leftOfParent) parent.left else pointer,
-          rightSize = if (leftOfParent) parent.leftSize else length,
+          left = if (childIsLeft) pointer else parent.left,
+          right = if (!childIsLeft) pointer else parent.right,
           point = parent.point,
           record = parent.record
         )
-        updatedParent.store(updatedParent, leftOfParent = true)
+        val file = new RandomAccessFile(filename, "rw")
+        file.seek(parentPointer)
+        file.write(updatedParent.serialize)
+        file.close()
       }
-
     }
 
 
@@ -70,62 +68,96 @@ object Main  extends App {
   }
 
 
+
   object Node{
-    val baseLength: Short = 20 // 2 * 8 (Long) + 2 * 2 (Short)
-    def deserialize(bytes: Array[Byte]): Node = {
+    val baseSize: Short = (
+      2 * 8 + // 2 pointers
+      2 + // size
+      K * 8 // Point
+      ).toShort
+
+
+
+    def get(pointer: Pointer, estimatedSize: Int = 100): Option[Node] = {
+      val file = new RandomAccessFile(filename, "rw")
+      val fileSize = file.length()
+
+      // if the file is empty, return None
+      if (fileSize == 0) {
+        None
+
+        // return None if the file doesn't contain enough bytes to read the size of the Node
+      } else if (fileSize < 2) {
+        None
+
+        // read the node from disk, and return it
+      } else {
+        file.seek(pointer)
+        val array = (0 until estimatedSize).iterator.map(_.toByte).toArray
+        file.read(array)
+        val node = Node.deserialize(array)
+        node.orElse {
+          println("need to get more bytes to read entire Node")
+          get(pointer, estimatedSize + 100)
+        }
+      }
+    }
+
+
+    def deserialize(bytes: Array[Byte]): Option[Node] = {
       val stream = ByteBuffer.wrap(bytes)
-      new Node(
-        left      = stream.getLong,
-        leftSize  = stream.getShort,
-        right     = stream.getLong,
-        rightSize = stream.getShort,
-        point     = (for (_ <- 0 until K) yield stream.getDouble).toArray,
-        record    = new Record(
-          (for (_ <- 0 until stream.remaining()) yield stream.get()).toArray, "UTF-8"
+      val bytesRead = stream.remaining()
+
+      // return None if the entire Node is not contained in the stream
+      val size = stream.getShort
+      if (bytesRead < size) None
+
+      // deserialize and return the Node
+      Some(
+        new Node(
+          left      = stream.getLong,
+          right     = stream.getLong,
+          point     = (for (_ <- 0 until K) yield stream.getDouble).toArray,
+          record    = new Record(
+            (for (_ <- 0 until size - baseSize) yield stream.get()).toArray, "UTF-8"
+          )
         )
       )
     }
 
 
-
-    def find(point: Point): Array[Node] = {
-      val firstNode = Node.deserialize(Array(23,53,234,324,345,345,345,345))
-
-      val k = 0
-      def traverse(k: Integer): Array[Node] = {
-        if(point(k)
+    def findParent(point: Point, k: Int = 0, pointer: Pointer = 0, childIsLeft: Boolean = true): (Boolean, Pointer, Option[Node]) = {
+      val node = Node.get(pointer)
+      if (node.isEmpty) {
+        (childIsLeft, pointer, None)
+      }
+      else if (node.get.point(k) < point(k) && node.get.left != -1) {
+        findParent(point, (k + 1) % K, node.get.left, true)
+      }
+      else if (node.get.point(k) >= point(k) && node.get.right != -1) {
+        findParent(point, (k + 1) % K, node.get.right, false)
+      }
+      else {
+        (childIsLeft, pointer, node)
       }
     }
 
 
+
     def insert(point: Point, record: String) = {
-      val node = new Node(0, 0, 0, 0, point, record)
-      node.store(node, true)
+      val node = new Node(-1, -1, point, record)
+      val (childIsLeft, parentPointer, parentNode) = findParent(point)
+      parentNode.foreach{(node: Node) => println("found parent node " + node)}
+      node.store(childIsLeft, parentPointer, parentNode)
     }
 
   }
 
 
-
-  val nodes = (0 until 10).map(v => new Node(v, v.toShort, v, v.toShort, Array(545, 34454), "LL"))
-  val outFile = new FileOutputStream("C:\\Users\\Jesse.Loor\\Desktop\\k_d_tree\\bin", false)
-  nodes.foreach(node => outFile.write(node.serialize))
-  outFile.close()
-
-  val path = Paths.get("C:\\Users\\Jesse.Loor\\Desktop\\k_d_tree\\bin")
-  val bytes = Files.readAllBytes(path)
-  val inferred = (1 to 10).map(v => Node.deserialize(bytes.slice((v-1) * (Node.baseLength + 8 * K + 2), v * (Node.baseLength + 8 * K + 2))))
-
-
-  println(nodes.length)
-  println(inferred.length)
-
-  println(nodes.last.left)
-  println(inferred.last.left)
-
-
-  println(inferred(7))
-  println(inferred(7).point.mkString(",  "))
+  Node.insert(Array(0.toDouble,0.toDouble),"1")
+  Node.insert(Array(0.toDouble,0.toDouble),"2")
+  Node.insert(Array(0.toDouble,0.toDouble),"3")
+  Node.insert(Array(0.toDouble,0.toDouble),"4")
 
 }
 
