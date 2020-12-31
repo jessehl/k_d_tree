@@ -4,8 +4,8 @@ import java.nio.ByteBuffer
 
 object Main  extends App {
 
-  val filename = "C:\\Users\\Jesse.Loor\\Desktop\\k_d_tree\\bin"
-  val K = 2 // number of dimensions
+  val filename = "C:\\Users\\Jesse.Loor\\Desktop\\k_d_tree\\tree.bin"
+  val K = 3 // number of dimensions (e.g. number of Coordinates that make up a single Point)
 
   type Coordinate = Double
   type Point = Array[Coordinate]
@@ -16,9 +16,9 @@ object Main  extends App {
   class Node(val left: Pointer, val right: Pointer, val point: Point, val record: Record) {
     def serialize: Array[Byte] = {
       val recordBytes = record.getBytes("UTF-8")
-      val size = (recordBytes.length + Node.baseSize).toShort
+      val size = (Node.baseSize + recordBytes.length).toShort
 
-      // but the content of the Node in a byte stream
+      // put the content of the Node in a byte stream
       val stream = ByteBuffer.allocate(size)
       stream.putShort(size)
       stream.putLong(left)
@@ -31,38 +31,28 @@ object Main  extends App {
     }
 
 
-    def store(childIsLeft: Boolean = true, parentPointer: Pointer = 0, parentNode: Option[Node] = None): Unit = {
-      val bytes = this.serialize
-      val outFile = new FileOutputStream(filename, true)
 
-      // get pointer to this node and store on disk
-      val pointer = outFile.getChannel.size()
-      outFile.write(bytes)
-      outFile.close()
+    def store(nodeToOverwrite: Pointer = -1): Pointer = {
+      val file = new RandomAccessFile(filename, "rw")
 
-      parentNode.foreach {parent =>
-        // update the parent Node with the new Pointer and Size to this node
-        val updatedParent = new Node(
-          left = if (childIsLeft) pointer else parent.left,
-          right = if (!childIsLeft) pointer else parent.right,
-          point = parent.point,
-          record = parent.record
-        )
-        val file = new RandomAccessFile(filename, "rw")
-        file.seek(parentPointer)
-        file.write(updatedParent.serialize)
-        file.close()
-      }
+      if (nodeToOverwrite != -1) file.seek(nodeToOverwrite) else file.seek(file.length())
+      val pointer = file.getFilePointer()
+      file.write(this.serialize)
+      file.close()
+      pointer
     }
+
 
 
     override def toString: String = {
       "Node(" +
-      this
-        .getClass
-        .getDeclaredFields
-        .map(name => name.getName + ": " + name.get(this).toString).mkString(", ") +
-      ")"
+        this
+          .getClass
+          .getDeclaredFields
+          .filterNot(_.getName == "point")
+          .map(name => name.getName + ": " + name.get(this).toString).mkString(", ") +
+        ", point: (" + this.point.mkString(", ") + ") " +
+        ")"
     }
 
   }
@@ -77,30 +67,26 @@ object Main  extends App {
       ).toShort
 
 
-
-    def get(pointer: Pointer, estimatedSize: Int = 100): Option[Node] = {
+    def read(pointer: Pointer, chunkSize: Int = 100): Option[Node] = {
       val file = new RandomAccessFile(filename, "rw")
-      val fileSize = file.length()
 
-      // if the file is empty, return None
-      if (fileSize == 0) {
-        None
+      // return None if file doesn't contain enough bytes to contain a Node
+      var node: Option[Node] = None
 
-        // return None if the file doesn't contain enough bytes to read the size of the Node
-      } else if (fileSize < 2) {
-        None
-
-        // read the node from disk, and return it
-      } else {
+      // read bytes from the file until the entire Node is deserializable
+      if (file.length() - baseSize >= pointer) {
         file.seek(pointer)
-        val array = (0 until estimatedSize).iterator.map(_.toByte).toArray
+        val array = (0 until chunkSize).iterator.map(_.toByte).toArray
         file.read(array)
-        val node = Node.deserialize(array)
-        node.orElse {
+        node = Node.deserialize(array).orElse{
           println("need to get more bytes to read entire Node")
-          get(pointer, estimatedSize + 100)
+          // double the number of bytes read with each try
+          read(pointer, chunkSize * chunkSize)
         }
       }
+
+      file.close()
+      node
     }
 
 
@@ -125,39 +111,79 @@ object Main  extends App {
       )
     }
 
+    class parentNode(val childIsLeft: Boolean, val pointer: Pointer, val node: Option[Node])
 
-    def findParent(point: Point, k: Int = 0, pointer: Pointer = 0, childIsLeft: Boolean = true): (Boolean, Pointer, Option[Node]) = {
-      val node = Node.get(pointer)
-      if (node.isEmpty) {
-        (childIsLeft, pointer, None)
+    def findParent(pointer: Pointer = 0, point: Point, k: Int = 0): parentNode = {
+      // the ancestor - which is potentially(!) the parent
+      // simply the first node (pointer = 0) when invoked for the first time
+      val ancestor = Node.read(pointer)
+      print("*") // show iteration
+      // traverse down to more 'direct' ancestors
+      if (ancestor.get.point(k) < point(k) && ancestor.get.left != -1) {
+        findParent(ancestor.get.left, point, (k + 1) % K)
       }
-      else if (node.get.point(k) < point(k) && node.get.left != -1) {
-        findParent(point, (k + 1) % K, node.get.left, true)
+      else if (ancestor.get.point(k) >= point(k) && ancestor.get.right != -1) {
+        findParent(ancestor.get.right, point, (k + 1) % K)
       }
-      else if (node.get.point(k) >= point(k) && node.get.right != -1) {
-        findParent(point, (k + 1) % K, node.get.right, false)
+
+      // if the ancestor is the direct parent (e.g. left/right == -1)
+      else if (ancestor.get.point(k) < point(k)) {
+        new parentNode(true, pointer, ancestor)
       }
-      else {
-        (childIsLeft, pointer, node)
+      else if (ancestor.get.point(k) >= point(k)) {
+        new parentNode(false, pointer, ancestor)
       }
+
+
+      else {  //(ancestor.isEmpty) {
+        throw new Exception("Pointer doesn't point to an actual Node on-disk. This should not happen, actually - because this is always called after the first node is there.")
+      }
+
     }
 
 
-
-    def insert(point: Point, record: String) = {
+    def insert(point: Point, record: String): Unit = {
+      // left and right node are both -1
       val node = new Node(-1, -1, point, record)
-      val (childIsLeft, parentPointer, parentNode) = findParent(point)
-      parentNode.foreach{(node: Node) => println("found parent node " + node)}
-      node.store(childIsLeft, parentPointer, parentNode)
+      val pointer = node.store()
+
+      // if there is a parent Node, update it
+      val parent = findParent(point = point)
+      parent.node.foreach {parentNode =>
+        // ignore if the found parent is actually the node itself (this)
+        if(pointer != parent.pointer) {
+          println("updating parent: " + parentNode + ", node: " + node)
+          val updatedParent = new Node(
+            left  = if(parent.childIsLeft) pointer else parentNode.left,
+            right = if(!parent.childIsLeft) pointer else parentNode.right,
+            point = parentNode.point,
+            record = parentNode.record
+          )
+          updatedParent.store(parent.pointer)
+        }
+
+      }
+
     }
+
 
   }
+//
+//  // worst-case-scenario (always insert at edges of the tree)
+//  (0 until 1000).foreach { nr =>
+//    println("nr :" + nr)
+//    if(nr % 2 == 0) Node.insert(Array(nr.toDouble, nr.toDouble, nr.toDouble), nr.toString)
+//    else  Node.insert(Array((-nr).toDouble, (-nr).toDouble, (-nr).toDouble), (-nr).toString)
+//  }
 
 
-  Node.insert(Array(0.toDouble,0.toDouble),"1")
-  Node.insert(Array(0.toDouble,0.toDouble),"2")
-  Node.insert(Array(0.toDouble,0.toDouble),"3")
-  Node.insert(Array(0.toDouble,0.toDouble),"4")
+  // worst-case-scenario (always insert at edges of the tree)
+  (0 until 100).foreach { it =>
+    val nr = math.random()
+    println("iteration :" + it)
+    Node.insert((0 until K).map(b => nr).toArray, nr.toString)
+  }
+
 
 }
 
