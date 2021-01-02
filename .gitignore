@@ -1,6 +1,12 @@
+# compiled stuff
 target/*
 
+# intellIJ files
 .idea/*
 
+# compiled/cached objects
 project/target/*
+
+# database files
+*.kd
 
