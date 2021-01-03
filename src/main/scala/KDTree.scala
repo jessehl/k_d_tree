@@ -94,7 +94,6 @@ class KDTree(val K: Int, val databaseName: String){
   class Node(val left: Pointer, val right: Pointer, val point: Point, val record: Record) {
     def serialize: Array[Byte] = {
       val recordBytes = record.getBytes("UTF-8")
-      println(recordBytes.size)
       val size = (Node.baseSize + recordBytes.length).toShort
 
       // put the content of the Node in a byte stream
@@ -152,7 +151,7 @@ class KDTree(val K: Int, val databaseName: String){
       ).toShort
 
 
-    def read(pointer: Pointer, chunkSize: Int = 50, file: RandomAccessFile = new RandomAccessFile(filename, "r")): Option[Node] = {
+    def read(pointer: Pointer, chunkSize: Int = 100, file: RandomAccessFile = new RandomAccessFile(filename, "r")): Option[Node] = {
       // return None if file doesn't contain enough bytes to contain a Node
       var node: Option[Node] = None
 
@@ -180,7 +179,6 @@ class KDTree(val K: Int, val databaseName: String){
       // return None if the entire Node is not contained in the stream
       val size = stream.getShort
       if (bytesRead < size) {
-        println("size:" + size + " read: " + bytesRead)
         None
       } else {
         // deserialize and return the Node
