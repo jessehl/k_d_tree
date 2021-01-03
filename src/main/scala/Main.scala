@@ -13,6 +13,7 @@ object Main extends App {
   val results = Array("worst_case", "best_case").map { scenario =>
     (1 to maxNumberOfDimensions).map { nrOfDimensions =>
       val k_d_tree = new KDTree(K = nrOfDimensions, databaseName = scenario)
+      println("computing: " + k_d_tree.filename)
       (1 to numberOfRecords).map { nr =>
         val startTime = LocalDateTime.now()
         Array(
