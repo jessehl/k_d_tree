@@ -1,13 +1,13 @@
 package KDTree
 
-import java.io.{PrintWriter, RandomAccessFile}
+import java.io.{PrintWriter}
 import java.time.LocalDateTime
 import java.time.temporal._
 
 object Main extends App {
 
 
-  val numberOfRecords = 1000
+  val numberOfRecords = 10000000
   val maxNumberOfDimensions = 3
 
   val results = Array("worst_case", "best_case").map { scenario =>
