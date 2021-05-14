@@ -7,25 +7,24 @@ import java.time.temporal._
 object Main extends App {
 
 
-  val numberOfRecords = 10000000
-  val maxNumberOfDimensions = 3
+  val numberOfRecords = 2500
+  val numberOfDimensions = 5
+  val scenarios = Array("worst_case", "average_case")
 
-  val results = Array("worst_case", "best_case").map { scenario =>
-    (1 to maxNumberOfDimensions).map { nrOfDimensions =>
-      val k_d_tree = new KDTree(K = nrOfDimensions, databaseName = scenario)
-      println("computing: " + k_d_tree.filename)
+  val results = scenarios.map { scenario =>
+      val kdTree = new KDTree(K = numberOfDimensions, databaseName = scenario)
+      println("computing: " + kdTree.filename)
       (1 to numberOfRecords).map { nr =>
         val startTime = LocalDateTime.now()
         Array(
           scenario,
-          nrOfDimensions.toString,
+          numberOfDimensions.toString,
           nr.toString,
-          if (scenario == "worst_case") k_d_tree.insertWorstCase().toString else k_d_tree.insertRandom().toString,
+          if (scenario == "worst_case") kdTree.insertWorstCase().toString else kdTree.insertRandom().toString,
           startTime.until(LocalDateTime.now(), ChronoUnit.MILLIS).toString
         )
       }
-    }
-  }.flatten.flatten
+  }.flatten
 
   // write csv file
   new PrintWriter("output.csv") {

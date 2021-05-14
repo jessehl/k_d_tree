@@ -112,8 +112,8 @@ class KDTree(val K: Int, val databaseName: String){
     /**
      * Stores <this> node on-disk. Appends the node to the end of the file, or overwrites
      * the node that starts at pointer <nodeToOverwrite> (if that argument is supplied).
-     * Note: the operation to overwriting an existing node exists because we need to update its left/right child.
-     * Updating the <record> of a node
+     * The operation to overwrite an existing Node exists because we need to update the reference to a Node's
+     * left/right child.
      * @param nodeToOverwrite: Pointer to the node to overwrite.
      * @return
      */
