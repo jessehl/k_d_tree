@@ -13,16 +13,16 @@ The database (Tree) supports one method only: `insert`. This method requires two
 
 ## Performance
 I've investigated the performance of the search algorithm. I used two higher-level methods:
-- `insertRandom`: inserts a Node _at a random location_. Inserting at random locations in the Tree, means that (by and large) the Nodes will be distributed appropriately.
-- `insertWorstCase`: inserts a Node _at a point which is slightly 'higher' than the previously inserted Node_. This boils down to inserting Nodes only at the 'edges' of the Tree. Another way to phrase it: the Tree ends up being a giant linked list, because every Node will be the (right) child of the previous Node.  
+- **[average-case]** `insertRandom`: inserts a Node _at a random location_. Inserting at random locations in the Tree, means that (by and large) the Nodes will be distributed appropriately.
+- **[worst-case]** `insertWorstCase`: inserts a Node _at a point which is slightly 'higher' than the previously inserted Node_. This boils down to inserting Nodes only at the 'edges' of the Tree. Another way to phrase it: the Tree ends up being a giant linked list, because every Node will be the (right) child of the previous Node.  
 
 In the Main file, two Trees are built (using above methods) to inspect average- and worst-case performance, respectively. Each Tree starts empty, and for every `insert`, we record:
 - The number of miliseconds required to perform the insert (`miliseconds`)
 - The number of ancestors the inserted Node has (`number_of_iterations`)  
 
-The results are shown below (and can be found in [resources/](resoures/)):
+The results are shown below (and can be found in [resources/](resources/)):
 ![compare](resources/average_vs_worst_case.jpg)
-For the average-case scenario, we can clearly identify the logarithmic scale, giving away its `O(log n)` time complexity:
+Clearly, for the worst-case scerario, the time required to insert a Node is directly proportional to the number of Nodes (records) in the Tree. For the average-case scenario, we can clearly identify the logarithmic scale, so we can visually inspect its `O(log n)` time complexity:
 
 ![log_scale](resources/log_scale.jpg?s=100)
 ##### Many disk reads
