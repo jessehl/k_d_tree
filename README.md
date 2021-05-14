@@ -3,7 +3,7 @@
 This is a Scala implementation of a [K-D Tree](https://en.wikipedia.org/wiki/K-d_tree). The Tree is persisted as a binary file on disk.
 
 ## Motivation
-Being inspired by SQL Server's [spatial index](https://docs.microsoft.com/en-us/sql/relational-databases/spatial/spatial-indexes-overview?view=sql-server-ver15#:~:text=SQL%20Server%20supports%20spatial%20data,such%20as%20geometry%20or%20geography.), I wanted to learn how spatial indexes work under the hood. Although the algorithm used here is much simpler than SQL Server's, it does provide an efficient way of indexing spatial (more generally: multi-dimensional) data. This project also taught me how to serialize and store arbitrary data.
+Being inspired by SQL Server's [spatial index](https://docs.microsoft.com/en-us/sql/relational-databases/spatial/spatial-indexes-overview?view=sql-server-ver15#:~:text=SQL%20Server%20supports%20spatial%20data,such%20as%20geometry%20or%20geography.), I wanted to learn how spatial indexes work under the hood. Although the algorithm used here is much simpler than SQL Server's, it does provide an efficient way of indexing spatial (more generally: multi-dimensional) data. This project also taught me how to serialize and store arbitrary data on disk.
 
 ## Tree and Node structure
 Each Node contains pointers (byte offsets) to its `left` and `right` children. Pointer values of -1 indicate that there are no children. The location of each Node (`point`, being a K-dimensional array of coordinates), as well as its data (`record`, which is a string of any size) is stored in the Node itself. Because the `record` can be of any size, the Node also has a field that indicates its `size` (as counted by all bytes of the serialized Node). 
