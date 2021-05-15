@@ -23,7 +23,7 @@ class KDTree(val K: Int, val databaseName: String){
   // the Pointer to a node - e.g. a byte offset
   type Pointer = Long
 
-  // the record is just a string (e.g. a single value, or some JSON-decoded message)
+  // the record is just a string (e.g. a single value, or some JSON-encoded message)
   type Record = String
 
   assert(K > 0, "number of dimensions must be > 0")
@@ -35,9 +35,9 @@ class KDTree(val K: Int, val databaseName: String){
 
 
   /**
-   * Inserts a <record> in the database, located/indexed at <point>.
-   * Returns the number of iterations required to the tree in the node (e.g. how many nodes
-   * had to be read in order to find the node's parent).
+   * Inserts a <record> in the database (Tree), located/indexed at <point>.
+   * Returns the number of iterations required to find the Node's parent in the Tree 
+   * (e.g. how many ancestor Nodes had to be traversed (read from disk)).
    */
   def insert(point: Point, record: Record): Integer = {
     assert(point.length == K, "point must contain exactly K coordinates.")
@@ -115,7 +115,7 @@ class KDTree(val K: Int, val databaseName: String){
      * The operation to overwrite an existing Node exists because we need to update the reference to a Node's
      * left/right child.
      * @param nodeToOverwrite: Pointer to the node to overwrite.
-     * @return
+     * @return the Pointer to the stored Node.
      */
     def store(nodeToOverwrite: Pointer = -1): Pointer = {
       val file = new RandomAccessFile(filename, "rw")
