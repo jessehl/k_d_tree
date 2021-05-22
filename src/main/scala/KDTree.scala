@@ -20,7 +20,7 @@ class KDTree(val K: Int, val databaseName: String){
   type Coordinate = Double
   type Point = Seq[Coordinate]
 
-  // the Pointer to a node - e.g. a byte offset
+  // the Pointer to a node - i.e. a byte offset
   type Pointer = Long
 
   // the record is just a string (e.g. a single value, or some JSON-encoded message)
