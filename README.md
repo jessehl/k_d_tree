@@ -22,7 +22,7 @@ In the Main file, two Trees are built (using above methods) to inspect average- 
 
 The results are shown below (and can be found in [resources/](resources/)):
 ![compare](resources/average_vs_worst_case.jpg)
-Clearly, for the worst-case scerario, the time required to insert a Node is directly proportional to the number of Nodes (records) in the Tree. For the average-case scenario, we can clearly identify the logarithmic scale, so we can visually inspect its `O(log n)` time complexity:
+Clearly, for the worst-case scerario, the time required to insert a Node is directly proportional to the number of existing Nodes (records) in the Tree. For the average-case scenario, the logarithmic scale shows a more-or-less flat line, indicating its `O(log n)` time complexity:
 
 ![log_scale](resources/log_scale.jpg?s=100)
 ##### Many disk reads
